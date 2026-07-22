@@ -1,5 +1,3 @@
-# russia-whitelist-routing
-
 [English](README.en.md)
 
 Подробнее: https://github.com/vahellame/russia-whitelist-routing
