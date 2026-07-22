@@ -1,0 +1,22 @@
+{
+  "input": [
+    {
+      "type": "text",
+      "action": "add",
+      "args": {
+        "inputDir": "./data",
+        "onlyIPType": "ipv4"
+      }
+    }
+  ],
+  "output": [
+    {
+      "type": "v2rayGeoIPDat",
+      "action": "output",
+      "args": {
+        "outputName": "geoip.dat",
+        "outputDir": "./output"
+      }
+    }
+  ]
+}
