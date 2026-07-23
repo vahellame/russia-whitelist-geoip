@@ -39,9 +39,8 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: 15
-          body: 15
+          tag_name: "${{ github.run_number }}"
+          name: "${{ github.run_number }}"
           make_latest: true
           files: |
             output/geoip.dat

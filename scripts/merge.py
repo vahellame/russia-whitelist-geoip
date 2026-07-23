@@ -23,13 +23,11 @@ def parse(path: Path) -> dict[str, list[str]]:
         if not line or line.startswith("#"):
             continue
 
-        # Если есть решетка, делим по ней
         if "#" in line:
             cidr_part, _, hosts_part = line.partition("#")
             cidr = cidr_part.strip()
             hosts = hosts_part.split()
         else:
-            # Если решетки нет, первое слово — это CIDR, остальные — хосты
             parts = line.split()
             cidr = parts[0]
             hosts = parts[1:]
@@ -39,40 +37,37 @@ def parse(path: Path) -> dict[str, list[str]]:
 
     return result
 
+
 def decide(normal_hosts: list[str], wl_hosts: list[str]) -> tuple[str, list[str]]:
-    if not normal_hosts and not wl_hosts:
+    if not normal_hosts:
         return "dead", []
 
-    if not normal_hosts and wl_hosts:
-        # Недоступно снаружи, но работает через вайтлист
-        return "wl-only", wl_hosts
-
-    if normal_hosts and not wl_hosts:
-        # Доступно снаружи, но полностью заблокировано/недоступно через вайтлист
+    if not wl_hosts:
         return "blocked", []
 
-    # Если доступны оба скана, смотрим на отношение доступных хостов через WL к обычному скану
     ratio = len(wl_hosts) / len(normal_hosts)
     if ratio >= MIN_MATCH_RATIO:
-        return "kept", []  # Оставляем подсеть /24 целиком
+        return "kept", []
 
     return "reduced", wl_hosts
 
 
-def sort_key(entry: str) -> tuple[int, int]:
-    network = ipaddress.ip_network(entry, strict=False)
-    return (int(network.network_address), network.prefixlen)
+def sort_key(net: ipaddress.IPv4Network) -> tuple[int, int]:
+    return (int(net.network_address), net.prefixlen)
 
 
 def merge(name: str) -> None:
     normal = parse(NORMAL_DIR / name)
     wl = parse(WL_DIR / name)
 
-    # Собираем все уникальные CIDR из обоих сканов
-    all_cidrs = sorted(set(normal.keys()) | set(wl.keys()), key=sort_key)
+    # Сортируем исходные /24 по IP
+    all_cidrs = sorted(
+        normal.keys(),
+        key=lambda x: int(ipaddress.ip_network(x, strict=False).network_address),
+    )
 
-    out: list[str] = []
-    counts = {"kept": 0, "reduced": 0, "wl-only": 0, "blocked": 0, "dead": 0}
+    raw_networks: list[ipaddress.IPv4Network] = []
+    counts = {"kept": 0, "reduced": 0, "blocked": 0, "dead": 0}
 
     for cidr in all_cidrs:
         normal_hosts = normal.get(cidr, [])
@@ -82,20 +77,30 @@ def merge(name: str) -> None:
         counts[outcome] += 1
 
         if outcome == "kept":
-            out.append(cidr)
-        elif outcome in ("reduced", "wl-only"):
-            out.extend(f"{host}/32" for host in hosts)
+            raw_networks.append(ipaddress.ip_network(cidr, strict=False))
+        elif outcome == "reduced":
+            for host in hosts:
+                raw_networks.append(ipaddress.ip_network(f"{host}/32"))
+
+    # Схлопываем смежные /32 в /31, /30, /29 и т.д.
+    collapsed_networks = sorted(
+        ipaddress.collapse_addresses(raw_networks), key=sort_key
+    )
+
+    out_lines = [str(net) for net in collapsed_networks]
 
     FINAL_DIR.mkdir(parents=True, exist_ok=True)
-    (FINAL_DIR / name).write_text("\n".join(sorted(out, key=sort_key)) + ("\n" if out else ""))
+    (FINAL_DIR / name).write_text(
+        "\n".join(out_lines) + ("\n" if out_lines else "")
+    )
 
     print(
         f"{name}: {counts['kept']} kept as /24, "
         f"{counts['reduced']} reduced to /32, "
-        f"{counts['wl-only']} wl-only /32, "
         f"{counts['blocked']} blocked, "
-        f"{counts['dead']} dead",
-        file=sys.stderr
+        f"{counts['dead']} dead "
+        f"-> collapsed to {len(out_lines)} subnets",
+        file=sys.stderr,
     )
 
 
@@ -103,10 +108,15 @@ def main() -> None:
     if not NORMAL_DIR.is_dir() and not WL_DIR.is_dir():
         sys.exit("Ни один из каталогов с результатами сканирования не найден.")
 
-    lists = sorted({
-        entry.name for d in (NORMAL_DIR, WL_DIR) if d.is_dir()
-        for entry in d.iterdir() if entry.is_file() and not entry.name.startswith(".")
-    })
+    lists = sorted(
+        {
+            entry.name
+            for d in (NORMAL_DIR, WL_DIR)
+            if d.is_dir()
+            for entry in d.iterdir()
+            if entry.is_file() and not entry.name.startswith(".")
+        }
+    )
 
     if not lists:
         sys.exit("Файлы результатов не найдены.")

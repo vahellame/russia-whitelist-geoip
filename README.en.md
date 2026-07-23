@@ -6,9 +6,9 @@ Filtered IPv4 ranges of whitelisted Russian CDN and DDoS-protection providers, c
 
 **How they're built:**
 
-1. `scripts/fetch.py` retrieves each service's announced prefixes from RIPEstat and divides them into /24s, removing duplicates (a /24 announced both on its own and inside a larger prefix) → `data/raw/`.
-2. `scripts/scan.py` scans every /24 on port 443 (needs the `python-nmap` library) and is run twice: without the whitelist → `data/normal/`, and routed through the whitelist → `data/wl/`. It prompts `Scan through the whitelist? [y/N]` on start.
-3. `scripts/merge.py` compares both results into `data/final/`: if the whitelist reaches roughly as many hosts as without it, the /24 is kept whole; if it reaches meaningfully fewer, only the hosts actually reachable through the whitelist are kept, as individual /32s; if neither reaches anything, the range is dropped.
+1. `scripts/fetch.py` retrieves each service's announced prefixes from RIPEstat and divides them into `/24`s, removing duplicates (a `/24` announced both on its own and inside a larger prefix) → `data/raw/`.
+2. `scripts/scan.py` scans every `/24` on port 443 (needs the `python-nmap` library) and is run twice: without the whitelist → `data/normal/`, and routed through the whitelist → `data/wl/`. It prompts `Scan through the whitelist? [y/N]` on start.
+3. `scripts/merge.py` compares both results into `data/final/`: if the whitelist reaches roughly as many hosts as without it, the `/24` is kept whole; if it reaches meaningfully fewer, only the hosts actually reachable through the whitelist are kept, as individual /32s; if neither reaches anything, the range is dropped.
 4. On every push, GitHub Actions compiles `data/final/` into `geoip.dat`.
 
 ## Services
