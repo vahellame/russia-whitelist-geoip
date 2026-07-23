@@ -1,6 +1,6 @@
 [Русский](README.md)
 
-More: https://github.com/vahellame/russia-whitelist-geoip
+Main project: https://github.com/vahellame/russia-whitelist-routing
 
 Filtered IPv4 ranges of whitelisted Russian CDN and DDoS-protection providers, compiled into a `geoip.dat` for Xray/V2Ray.
 
@@ -26,4 +26,5 @@ Filtered IPv4 ranges of whitelisted Russian CDN and DDoS-protection providers, c
 ## Download
 
 ```text
-[https://github.com/vahellame/russia-whitelist-geoip/releases/latest/download/geoip.dat](https://github.com/vahellame/russia-whitelist-geoip/releases/latest/download/geoip.dat)
+https://github.com/vahellame/russia-whitelist-routing/releases/latest/download/geoip.dat
+```
