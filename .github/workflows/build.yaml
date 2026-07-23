@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "data/**"
+      - "data/final/**"
       - "config.json"
       - ".github/workflows/build.yaml"
   workflow_dispatch:
@@ -39,9 +39,9 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "1.0.${{ github.run_number }}"
-          name: "1.0.${{ github.run_number }}"
-          body: "Built from data/ · commit ${{ github.sha }} · run ${{ github.run_number }}"
+          tag_name: latest
+          name: 15
+          body: 15
           make_latest: true
           files: |
             output/geoip.dat

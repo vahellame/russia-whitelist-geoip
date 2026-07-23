@@ -4,7 +4,7 @@
       "type": "text",
       "action": "add",
       "args": {
-        "inputDir": "./data",
+        "inputDir": "./data/final",
         "onlyIPType": "ipv4"
       }
     }

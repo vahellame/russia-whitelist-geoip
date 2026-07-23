@@ -10,7 +10,9 @@ from typing import Iterator
 
 RIPESTAT = "https://stat.ripe.net/data/announced-prefixes/data.json?resource=AS{asn}"
 REQUEST_DELAY = 0.3
-DATA_DIR = Path("data")
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data" / "raw"
 
 PROVIDERS: dict[str, tuple[int, ...]] = {
     "cdnvideo": (57363, 204720),
@@ -35,25 +37,21 @@ def announced_ipv4(asn: int) -> list[ipaddress.IPv4Network]:
     return sorted(networks, key=lambda net: (int(net.network_address), net.prefixlen))
 
 
-def expand(networks: list[ipaddress.IPv4Network], emitted: set[str]) -> Iterator[str]:
+def expand(networks: list[ipaddress.IPv4Network], emitted: set[ipaddress.IPv4Network]) -> Iterator[str]:
     for network in networks:
         if network.prefixlen < 24:
-            fresh = [str(subnet) for subnet in network.subnets(new_prefix=24) if str(subnet) not in emitted]
-            if not fresh:
-                continue
             yield f"# {network} exposed"
-            for subnet in fresh:
-                emitted.add(subnet)
-                yield subnet
-        else:
-            key = str(network)
-            if key not in emitted:
-                emitted.add(key)
-                yield key
+            for subnet in network.subnets(new_prefix=24):
+                if subnet not in emitted:
+                    emitted.add(subnet)
+                    yield str(subnet)
+        elif network not in emitted:
+            emitted.add(network)
+            yield str(network)
 
 
 def render(asns: tuple[int, ...]) -> str:
-    emitted: set[str] = set()
+    emitted: set[ipaddress.IPv4Network] = set()
     blocks = []
     for asn in asns:
         try:
