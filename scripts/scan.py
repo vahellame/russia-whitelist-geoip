@@ -8,7 +8,6 @@ from pathlib import Path
 import nmap
 
 HTTPS_PORT = 443
-NMAP_TIMING = "-T4"
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 RAW_DIR = BASE_DIR / "data" / "raw"
@@ -22,7 +21,6 @@ NAME_WIDTH = max((len(name) for name in LISTS), default=0)
 
 _ROOT = hasattr(os, "geteuid") and os.geteuid() == 0
 PORT_SCAN = "-sS" if _ROOT else "-sT"
-NMAP_OPTS = f"-n {NMAP_TIMING}"
 
 
 def is_ipv4_cidr(line: str) -> bool:
@@ -64,7 +62,7 @@ def get_active_normal_subnets(name: str) -> set[str] | None:
 
 def scan(subnet: str) -> list[str]:
     scanner = nmap.PortScanner()
-    scanner.scan(hosts=subnet, ports=str(HTTPS_PORT), arguments=f"-Pn {PORT_SCAN} {NMAP_OPTS}")
+    scanner.scan(hosts=subnet, ports=str(HTTPS_PORT), arguments=f"-Pn {PORT_SCAN}")
     hosts = [
         host for host in scanner.all_hosts()
         if scanner[host].get("tcp", {}).get(HTTPS_PORT, {}).get("state") == "open"
