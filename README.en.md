@@ -26,5 +26,5 @@ Filtered IPv4 ranges of whitelisted Russian CDN and DDoS-protection providers, c
 ## Download
 
 ```text
-https://github.com/vahellame/russia-whitelist-routing/releases/latest/download/geoip.dat
+https://github.com/vahellame/russia-whitelist-geoip/releases/latest/download/geoip.dat
 ```

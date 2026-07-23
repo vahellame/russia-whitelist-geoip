@@ -26,5 +26,5 @@
 ## Скачать
 
 ```text
-https://github.com/vahellame/russia-whitelist-routing/releases/latest/download/geoip.dat
+https://github.com/vahellame/russia-whitelist-geoip/releases/latest/download/geoip.dat
 ```
