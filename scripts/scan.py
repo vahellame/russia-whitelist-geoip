@@ -3,12 +3,10 @@ from __future__ import annotations
 import ipaddress
 import os
 import sys
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import nmap
 
-WORKERS = 1
 HTTPS_PORT = 443
 NMAP_TIMING = "-T4"
 
@@ -37,6 +35,33 @@ def is_ipv4_cidr(line: str) -> bool:
         return False
 
 
+def get_active_normal_subnets(name: str) -> set[str] | None:
+    """Возвращает множество подсетей, у которых в normal-скане был хотя бы один живой хост."""
+    normal_file = NORMAL_DIR / name
+    if not normal_file.exists():
+        return None
+
+    active = set()
+    for line in normal_file.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+
+        if "#" in line:
+            cidr_part, _, hosts_part = line.partition("#")
+            cidr = cidr_part.strip()
+            hosts = hosts_part.split()
+        else:
+            parts = line.split()
+            cidr = parts[0]
+            hosts = parts[1:]
+
+        if hosts:
+            active.add(cidr)
+
+    return active
+
+
 def scan(subnet: str) -> list[str]:
     scanner = nmap.PortScanner()
     scanner.scan(hosts=subnet, ports=str(HTTPS_PORT), arguments=f"-Pn {PORT_SCAN} {NMAP_OPTS}")
@@ -51,7 +76,7 @@ def render(subnet: str, hosts: list[str]) -> str:
     return f"{subnet}  #" + (" " + " ".join(hosts) if hosts else "")
 
 
-def process(name: str, out_dir: Path, pool: ThreadPoolExecutor) -> None:
+def process(name: str, out_dir: Path, is_wl: bool) -> None:
     lines = (RAW_DIR / name).read_text().splitlines()
     subnets = list(dict.fromkeys(line.strip() for line in lines if is_ipv4_cidr(line)))
 
@@ -59,12 +84,24 @@ def process(name: str, out_dir: Path, pool: ThreadPoolExecutor) -> None:
     index_width = len(str(total))
     subnet_width = max((len(subnet) for subnet in subnets), default=0)
 
+    active_normal_subnets = get_active_normal_subnets(name) if is_wl else None
+    if is_wl and active_normal_subnets is None:
+        print(f"[{name}] warning: normal scan results not found in {NORMAL_DIR / name}, scanning all subnets",
+              file=sys.stderr)
+
     results: dict[str, list[str]] = {}
-    futures = {pool.submit(scan, subnet): subnet for subnet in subnets}
-    for completed, future in enumerate(as_completed(futures), start=1):
-        subnet = futures[future]
-        results[subnet] = future.result()
+
+    for completed, subnet in enumerate(subnets, start=1):
         prefix = f"[{name}]".ljust(NAME_WIDTH + 2)
+
+        # Если сканируем через WL и сеть была полностью мертва на normal — пропускаем вызов nmap
+        if is_wl and active_normal_subnets is not None and subnet not in active_normal_subnets:
+            results[subnet] = []
+            print(f"{prefix}  {subnet:<{subnet_width}}  443 open: 0 (skipped dead)  "
+                  f"{completed:>{index_width}}/{total}", file=sys.stderr)
+            continue
+
+        results[subnet] = scan(subnet)
         print(f"{prefix}  {subnet:<{subnet_width}}  443 open: {len(results[subnet]):<3}  "
               f"{completed:>{index_width}}/{total}", file=sys.stderr)
 
@@ -92,13 +129,14 @@ def main() -> None:
         answer = input("Scan through the whitelist? [y/N] ").strip().lower()
     except EOFError:
         answer = ""
-    out_dir = WL_DIR if answer == "y" else NORMAL_DIR
+
+    is_wl = answer == "y"
+    out_dir = WL_DIR if is_wl else NORMAL_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
     print(f"writing results to {out_dir}/", file=sys.stderr)
 
-    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-        for name in LISTS:
-            process(name, out_dir, pool)
+    for name in LISTS:
+        process(name, out_dir, is_wl)
 
 
 if __name__ == "__main__":
