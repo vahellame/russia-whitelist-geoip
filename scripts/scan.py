@@ -34,7 +34,6 @@ def is_ipv4_cidr(line: str) -> bool:
 
 
 def get_active_normal_subnets(name: str) -> set[str] | None:
-    """Возвращает множество подсетей, у которых в normal-скане был хотя бы один живой хост."""
     normal_file = NORMAL_DIR / name
     if not normal_file.exists():
         return None
@@ -71,6 +70,9 @@ def scan(subnet: str) -> list[str]:
 
 
 def render(subnet: str, hosts: list[str]) -> str:
+    if len(hosts) == 0:
+        return f"# {subnet}"
+
     return f"{subnet}  #" + (" " + " ".join(hosts) if hosts else "")
 
 
@@ -92,7 +94,6 @@ def process(name: str, out_dir: Path, is_wl: bool) -> None:
     for completed, subnet in enumerate(subnets, start=1):
         prefix = f"[{name}]".ljust(NAME_WIDTH + 2)
 
-        # Если сканируем через WL и сеть была полностью мертва на normal — пропускаем вызов nmap
         if is_wl and active_normal_subnets is not None and subnet not in active_normal_subnets:
             results[subnet] = []
             print(f"{prefix}  {subnet:<{subnet_width}}  443 open: 0 (skipped dead)  "

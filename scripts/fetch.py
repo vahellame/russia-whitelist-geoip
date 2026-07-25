@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Iterator
 
 RIPESTAT = "https://stat.ripe.net/data/announced-prefixes/data.json?resource=AS{asn}"
-REQUEST_DELAY = 0.3
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data" / "raw"
@@ -59,7 +58,7 @@ def render(asns: tuple[int, ...]) -> str:
         except Exception as error:
             print(f"failed AS{asn}: {error}", file=sys.stderr)
             networks = []
-        time.sleep(REQUEST_DELAY)
+
         blocks.append("\n".join([f"# https://stat.ripe.net/AS{asn}", *expand(networks, emitted)]))
     return "\n\n".join(blocks) + "\n"
 
