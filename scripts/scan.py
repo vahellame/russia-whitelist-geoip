@@ -14,9 +14,8 @@ RAW_DIR = BASE_DIR / "data" / "raw"
 NORMAL_DIR = BASE_DIR / "data" / "normal"
 WL_DIR = BASE_DIR / "data" / "wl"
 
-LISTS = tuple(sorted(
-    entry.name for entry in RAW_DIR.iterdir() if entry.is_file() and not entry.name.startswith(".")
-)) if RAW_DIR.is_dir() else ()
+LISTS = tuple(sorted(entry.name for entry in RAW_DIR.iterdir() if
+                     entry.is_file() and not entry.name.startswith("."))) if RAW_DIR.is_dir() else ()
 NAME_WIDTH = max((len(name) for name in LISTS), default=0)
 
 _ROOT = hasattr(os, "geteuid") and os.geteuid() == 0
@@ -44,16 +43,16 @@ def get_active_normal_subnets(name: str) -> set[str] | None:
         if not line or line.startswith("#"):
             continue
 
-        if "#" in line:
-            cidr_part, _, hosts_part = line.partition("#")
-            cidr = cidr_part.strip()
-            hosts = hosts_part.split()
-        else:
-            parts = line.split()
-            cidr = parts[0]
-            hosts = parts[1:]
+        cidr_part, _, hosts_part = line.partition("#")
+        cidr = cidr_part.strip()
+        tokens = hosts_part.split()
 
-        if hosts:
+        if tokens and tokens[0].isdigit():
+            count = int(tokens[0])
+        else:
+            count = len(tokens)
+
+        if count:
             active.add(cidr)
 
     return active
@@ -62,10 +61,9 @@ def get_active_normal_subnets(name: str) -> set[str] | None:
 def scan(subnet: str) -> list[str]:
     scanner = nmap.PortScanner()
     scanner.scan(hosts=subnet, ports=str(HTTPS_PORT), arguments=f"-Pn {PORT_SCAN}")
-    hosts = [
-        host for host in scanner.all_hosts()
-        if scanner[host].get("tcp", {}).get(HTTPS_PORT, {}).get("state") == "open"
-    ]
+    hosts = [host for host in scanner.all_hosts() if
+             scanner[host].get("tcp", {}).get(HTTPS_PORT, {}).get("state") == "open"]
+
     return sorted(hosts, key=ipaddress.IPv4Address)
 
 
@@ -73,7 +71,7 @@ def render(subnet: str, hosts: list[str]) -> str:
     if len(hosts) == 0:
         return f"# {subnet}"
 
-    return f"{subnet}  #" + (" " + " ".join(hosts) if hosts else "")
+    return f"{subnet} # {len(hosts)} " + " ".join(hosts)
 
 
 def process(name: str, out_dir: Path, is_wl: bool) -> None:
