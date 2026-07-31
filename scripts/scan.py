@@ -71,7 +71,7 @@ def render(subnet: str, hosts: list[str]) -> str:
     if len(hosts) == 0:
         return f"# {subnet}"
 
-    return f"{subnet} # {len(hosts)} " + " ".join(hosts)
+    return f"{subnet:<{18}}  #  {len(hosts):<{3}}  " + " ".join(hosts)
 
 
 def process(name: str, out_dir: Path, is_wl: bool) -> None:
