@@ -28,3 +28,5 @@ Filtered IPv4 ranges of whitelisted Russian CDN and DDoS-protection providers, c
 ```text
 https://github.com/vahellame/russia-whitelist-geoip/releases/latest/download/geoip.dat
 ```
+
+Next to it sits `geoip.dat.sha256` — the bare hash, 64 characters with no filename. INCY uses it to tell the file has not changed and skips re-downloading it ([docs](https://docs.incy.cc/en/routing/))
