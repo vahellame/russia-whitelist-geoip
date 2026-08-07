@@ -9,16 +9,12 @@ on:
       - ".github/workflows/build.yaml"
   workflow_dispatch:
 
-permissions:
-  contents: write
-
-concurrency:
-  group: build
-  cancel-in-progress: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
+    concurrency:
+      group: build-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
 
@@ -27,21 +23,65 @@ jobs:
           go-version: stable
 
       - name: Install v2fly/geoip
-        run: go install github.com/v2fly/geoip@latest
+        run: go install github.com/v2fly/geoip@202608050239
 
       - name: Build geoip.dat
         run: geoip -c config.json
 
+      - name: Sanity check
+        working-directory: output
+        run: |
+          test -s geoip.dat
+          test "$(stat -c %s geoip.dat)" -ge 300
+
       - name: Checksum
         working-directory: output
-        run: sha256sum geoip.dat | tee geoip.dat.sha256sum
+        run: |
+          sha256sum geoip.dat | tee geoip.dat.sha256sum
+          sha256sum geoip.dat | cut -d' ' -f1 > geoip.dat.sha256
 
-      - name: Publish release
-        uses: softprops/action-gh-release@v2
+      - uses: actions/upload-artifact@v4
         with:
-          tag_name: "${{ github.run_number }}"
-          name: "${{ github.run_number }}"
-          make_latest: true
+          name: geoip
+          path: output/
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: publish
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.run_number }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: geoip
+          path: output
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v3.0.2
+        with:
+          tag_name: ${{ github.run_number }}
+          name: ${{ github.run_number }}
+          draft: true
           files: |
             output/geoip.dat
+            output/geoip.dat.sha256
             output/geoip.dat.sha256sum
+
+      - name: Verify assets
+        run: |
+          names=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+          for f in geoip.dat geoip.dat.sha256 geoip.dat.sha256sum; do
+            echo "$names" | grep -qx "$f" || { echo "missing asset: $f" >&2; exit 1; }
+          done
+
+      - name: Publish release
+        run: gh release edit "$TAG" --draft=false --latest
