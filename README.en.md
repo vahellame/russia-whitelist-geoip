@@ -29,4 +29,14 @@ Filtered IPv4 ranges of whitelisted Russian CDN and DDoS-protection providers, c
 https://github.com/vahellame/russia-whitelist-geoip/releases/latest/download/geoip.dat
 ```
 
-Next to it sits `geoip.dat.sha256` — the bare hash, 64 characters with no filename. INCY uses it to tell the file has not changed and skips re-downloading it ([docs](https://docs.incy.cc/en/routing/))
+## Checksums
+
+Every release ships two checksums in different formats.
+
+`geoip.dat.sha256` holds the bare hash — 64 characters, no filename, no trailing newline. This is the format INCY expects: it fetches the file on subscription update and skips downloading `geoip.dat` when the hash matches the one it already has. More on it [here](https://docs.incy.cc/en/routing/#geo-files-optimized-downloading)
+
+`geoip.dat.sha256sum` is the standard GNU coreutils format, for manual verification:
+
+```sh
+sha256sum -c geoip.dat.sha256sum
+```
