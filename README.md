@@ -40,6 +40,16 @@
 https://github.com/vahellame/russia-whitelist-geoip/releases/latest/download/geoip.dat
 ```
 
+## Rule-set
+
+Те же данные для sing-box, mihomo и Shadowrocket в форматах `.srs`, `.mrs` и `.list`
+
+```text
+https://github.com/vahellame/russia-whitelist-geoip/releases/latest/download/geoip-ddos-guard.srs
+```
+
+Отдельный набор на каждую категорию из таблицы выше, плюс `geoip-category-public-dns`
+
 ## Контрольные суммы
 
 К каждому релизу прикладываются две контрольные суммы в разных форматах.

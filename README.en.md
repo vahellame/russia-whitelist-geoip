@@ -40,6 +40,16 @@ Raw dumps the subnet decisions were based on
 https://github.com/vahellame/russia-whitelist-geoip/releases/latest/download/geoip.dat
 ```
 
+## Rule sets
+
+The same data for sing-box, mihomo and Shadowrocket in `.srs`, `.mrs` and `.list` formats
+
+```text
+https://github.com/vahellame/russia-whitelist-geoip/releases/latest/download/geoip-ddos-guard.srs
+```
+
+One set per category from the table above, plus `geoip-category-public-dns`
+
 ## Checksums
 
 Every release ships two checksums in different formats.
