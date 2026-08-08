@@ -85,3 +85,8 @@ jobs:
 
       - name: Publish release
         run: gh release edit "$TAG" --draft=false --latest
+
+      - name: Notify routing
+        env:
+          GH_TOKEN: ${{ secrets.ROUTING_DISPATCH_TOKEN }}
+        run: gh api repos/vahellame/russia-whitelist-routing/dispatches -f event_type=geo-updated

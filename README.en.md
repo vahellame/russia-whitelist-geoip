@@ -8,8 +8,10 @@ Filtered IPv4 ranges of whitelisted Russian CDN and DDoS-protection providers, c
 
 1. `scripts/fetch.py` retrieves each service's announced prefixes from RIPEstat and divides them into `/24`s, removing duplicates (a `/24` announced both on its own and inside a larger prefix) → `data/raw/`.
 2. `scripts/scan.py` scans every `/24` on port 443 sequentially in a single thread (requires `python-nmap`) and is run twice: first without the whitelist → `data/normal/`, then routed through the whitelist → `data/wl/`. When running through the whitelist, it automatically skips subnets that had no active hosts during the normal scan.
-3. `scripts/merge.py` compares both results into `data/final/`. The decision to keep a subnet is based on a reachability coefficient (`ratio` = available hosts in `wl` / available hosts in `normal`). Analysis of real scans revealed a clear bimodal distribution: a gap between ~0.16 (actual whitelist restrictions) and ~0.80+ (scanning noise). Based on this, a threshold of `MIN_MATCH_RATIO = 0.5` is set, sitting right in the middle of this gap. If `ratio` ≥ 0.5, the `/24` is kept whole (interpreted as noise, not a real restriction); if `ratio` < 0.5 but `wl > 0`, only the hosts actually reachable through the whitelist are kept as individual `/32`s, which are then automatically collapsed into optimal CIDR blocks (`/31`, `/30`, etc.); if neither reaches anything, the range is dropped.
-4. On every push into `main`, GitHub Actions compiles `data/final/` into `geoip.dat`.
+3. Going through every `/24` by hand and submitting to [BSCHEKER](https://t.me/bschekbot), [Latency Lab](https://t.me/Latency_Lab_bot) and [Checkburnet](https://t.me/checkburbot) only those where the difference in reachable hosts between `normal` and `wl` stays within statistical noise
+4. Going through every `/24` by hand and adding in those same bots only those where the difference between carriers stays within statistical noise
+5. Collapsing `/24`s where possible
+6. On every push into `main`, GitHub Actions compiles `data/final/` into `geoip.dat`.
 
 ## Services
 
@@ -22,6 +24,15 @@ Filtered IPv4 ranges of whitelisted Russian CDN and DDoS-protection providers, c
 | `ngenix` | AS34879 |
 | `servicepipe` | AS201706 |
 | `stormwall` | AS43298 |
+
+## In progress
+
+- `vk`, `yandex` — ranges are added one by one rather than by ASN
+- `other`
+
+## The scans folder
+
+Raw dumps the subnet decisions were based on
 
 ## Download
 
