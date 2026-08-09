@@ -15,6 +15,7 @@ CATEGORIES = [
     "vk",
     "yandex",
     "category-public-dns",
+    "private",
 ]
 
 
