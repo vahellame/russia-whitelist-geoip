@@ -1,5 +1,3 @@
-[English](README.en.md)
-
 Основной проект: https://github.com/vahellame/russia-whitelist-routing
 
 ## Что это
