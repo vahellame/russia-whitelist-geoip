@@ -1,0 +1,9 @@
+#!/bin/sh
+[ -n "$2" ] && exit 0
+
+root=$(git rev-parse --show-toplevel) || exit 0
+subject=$(python3 "$root/.github/scripts/changes.py" subject HEAD index 2>/dev/null) || exit 0
+[ -z "$subject" ] && exit 0
+
+printf '%s\n%s\n' "$subject" "$(cat "$1")" > "$1.new"
+mv "$1.new" "$1"

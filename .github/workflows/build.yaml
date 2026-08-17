@@ -4,11 +4,15 @@ on:
   push:
     branches: [main]
     paths:
-      - "data/final/**"
+      - "data/**"
       - "config.json"
       - ".github/scripts/**"
       - ".github/workflows/build.yaml"
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 env:
   SINGBOX_VERSION: 1.13.16
@@ -17,9 +21,6 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    concurrency:
-      group: build-${{ github.ref }}
-      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
 
@@ -55,7 +56,7 @@ jobs:
           test "$(stat -c %s geoip.dat)" -ge 300
 
       - name: Generate rule sets
-        run: python3 .github/scripts/rulesets.py data/final output
+        run: python3 .github/scripts/rulesets.py data output
 
       - name: Compile rule sets
         working-directory: output
@@ -75,10 +76,29 @@ jobs:
           sha256sum geoip.dat | tee geoip.dat.sha256sum
           sha256sum geoip.dat | cut -d' ' -f1 > geoip.dat.sha256
 
+      - name: Changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          prev=$(gh release view --json tagName --jq .tagName 2>/dev/null || true)
+          if [ -n "$prev" ]; then
+            git fetch --no-tags --depth=1 origin "refs/tags/$prev:refs/tags/$prev"
+            base="$prev"
+          else
+            base=$(git hash-object -t tree /dev/null)
+          fi
+          python3 .github/scripts/changes.py changelog "$base" > notes.md
+          cat notes.md
+
       - uses: actions/upload-artifact@v4
         with:
           name: geoip
-          path: output/
+          path: |
+            output/
+            notes.md
           retention-days: 1
           if-no-files-found: error
 
@@ -87,9 +107,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    concurrency:
-      group: publish
-      cancel-in-progress: false
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
@@ -98,7 +115,6 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: geoip
-          path: output
 
       - name: Create draft release
         uses: softprops/action-gh-release@v3.0.2
@@ -106,6 +122,7 @@ jobs:
           tag_name: ${{ github.run_number }}
           name: ${{ github.run_number }}
           draft: true
+          body_path: notes.md
           files: output/*
 
       - name: Verify assets

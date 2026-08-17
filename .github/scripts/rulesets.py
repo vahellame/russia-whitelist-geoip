@@ -4,14 +4,7 @@ import pathlib
 import sys
 
 CATEGORIES = [
-    "cdnvideo",
-    "curator",
-    "ddos-guard",
-    "edgecenter",
-    "ngenix",
     "other",
-    "servicepipe",
-    "stormwall",
     "vk",
     "yandex",
     "category-public-dns",
@@ -43,7 +36,7 @@ def write_set(name, cidrs, outdir):
 
 def main():
     if len(sys.argv) != 3:
-        raise SystemExit("usage: rulesets.py <data/final> <outdir>")
+        raise SystemExit("usage: rulesets.py <data> <outdir>")
     src = pathlib.Path(sys.argv[1])
     outdir = pathlib.Path(sys.argv[2])
     outdir.mkdir(parents=True, exist_ok=True)
