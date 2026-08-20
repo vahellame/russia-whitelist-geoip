@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
+import contextlib
 import json
 import os
 import sys
@@ -9,6 +10,7 @@ import urllib.error
 import urllib.request
 import uuid
 from pathlib import Path
+from typing import Optional
 
 API = "https://bsbord.com/v1"
 TOKEN = os.environ.get("BSCHEKER_TOKEN", "")
@@ -20,7 +22,7 @@ PAUSE = 1.2
 RETRIES = 3
 
 
-def call(method: str, path: str, body: dict | None = None) -> dict:
+def call(method: str, path: str, body: Optional[dict] = None) -> dict:
     data = json.dumps(body).encode() if body is not None else None
     headers = {"Authorization": f"Bearer {TOKEN}"}
     if data is not None:
@@ -31,26 +33,24 @@ def call(method: str, path: str, body: dict | None = None) -> dict:
         return json.load(response)
 
 
-def call_retrying(method: str, path: str, body: dict | None = None) -> dict:
+def call_retrying(method: str, path: str, body: Optional[dict] = None) -> dict:
     for attempt in range(RETRIES):
         try:
             return call(method, path, body)
         except urllib.error.HTTPError as exc:
             payload = {}
-            try:
+            with contextlib.suppress(Exception):
                 payload = json.load(exc)
-            except Exception:
-                pass
             error = payload.get("error", {})
             code = error.get("code", str(exc.code))
             if exc.code in (429, 503) or code in ("busy", "request_in_progress"):
                 delay = error.get("details", {}).get("retry_after") or 60
                 if attempt == RETRIES - 1:
-                    raise SystemExit(f"{code}: попытки исчерпаны")
+                    raise SystemExit(f"{code}: попытки исчерпаны") from exc
                 print(f"  {code}, повтор через {delay} с", file=sys.stderr)
                 time.sleep(delay)
                 continue
-            raise SystemExit(f"{code}: {error.get('message', exc.reason)}")
+            raise SystemExit(f"{code}: {error.get('message', exc.reason)}") from exc
     raise SystemExit("недостижимо")
 
 
@@ -86,7 +86,21 @@ def main() -> None:
                  if o["channel_state"] == "DPI_ON"]
     if not operators:
         raise SystemExit("нет операторов с включённым белым списком")
-    print(f"операторов: {len(operators)}, целей: {len(checks)}\n")
+
+    batches = -(-len(checks) // BATCH)
+    preview = call_retrying("POST", "/v1/probe/preview", {
+        "targets": [host for _, _, host in checks[:BATCH]],
+        "operators": operators,
+        "probes": {"icmp": True, "tcp": True},
+        "dpi": "on",
+    })
+    each = preview.get("cost_credits", 0)
+    balance = call_retrying("GET", "/v1/account").get("balance_total", 0)
+    print(f"операторов: {len(operators)}, целей: {len(checks)}")
+    print(f"цена: {each} кредитов за пачку, всего около {each * batches}, на счету {balance}")
+    if input("продолжить? [y/N] ").strip().lower() != "y":
+        raise SystemExit("отменено")
+    print()
 
     failures = []
     for start in range(0, len(checks), BATCH):
