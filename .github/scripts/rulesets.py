@@ -4,7 +4,9 @@ import pathlib
 import sys
 
 CATEGORIES = [
+    "matchtv",
     "other",
+    "tbank",
     "vk",
     "yandex",
     "category-public-dns",
